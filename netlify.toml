@@ -3,6 +3,24 @@
   publish = "dist"
 
 [[redirects]]
+  from = "http://kiwimoto72.com/*"
+  to = "https://kiwimoto72.com/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "http://www.kiwimoto72.com/*"
+  to = "https://kiwimoto72.com/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "https://www.kiwimoto72.com/*"
+  to = "https://kiwimoto72.com/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
