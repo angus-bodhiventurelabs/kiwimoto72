@@ -174,28 +174,34 @@
 
         .hero-stats {
             display: flex;
-            gap: 3rem;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            gap: 2rem;
+            width: min(980px, 100%);
             animation: fadeUp 0.8s ease-out 0.45s both;
         }
 
         .stat {
             text-align: center;
+            flex: 1 1 180px;
+            min-width: 160px;
         }
 
         .stat-number {
             font-family: 'Bebas Neue', sans-serif;
-            font-size: 2.5rem;
+            font-size: clamp(3.25rem, 5.5vw, 4.25rem);
             color: var(--accent);
             line-height: 1;
+            letter-spacing: 0.02em;
         }
 
         .stat-label {
             font-family: 'Barlow Condensed', sans-serif;
-            font-size: 0.75rem;
-            letter-spacing: 0.15em;
+            font-size: 0.88rem;
+            letter-spacing: 0.2em;
             text-transform: uppercase;
             color: var(--white-dim);
-            margin-top: 0.25rem;
+            margin-top: 0.5rem;
         }
 
         .scroll-indicator {
@@ -678,8 +684,10 @@
             .nav-links.open { display: flex; }
             .nav-toggle { display: block; }
 
-            .hero-stats { gap: 1.5rem; }
-            .stat-number { font-size: 2rem; }
+            .hero-stats { gap: 1rem; justify-content: center; }
+            .stat { flex: 1 1 145px; min-width: 140px; }
+            .stat-number { font-size: clamp(2.35rem, 8vw, 3rem); }
+            .stat-label { font-size: 0.78rem; letter-spacing: 0.16em; }
 
             .about-content { grid-template-columns: 1fr; gap: 2rem; }
             .podcast-layout { grid-template-columns: 1fr; gap: 2rem; }
@@ -727,6 +735,10 @@
             <div class="stat">
                 <div class="stat-number">35</div>
                 <div class="stat-label">Years Riding</div>
+            </div>
+            <div class="stat">
+                <div class="stat-number">1 Million</div>
+                <div class="stat-label">Miles Traveled</div>
             </div>
         </div>
         <div class="scroll-indicator"><div></div></div>
@@ -856,6 +868,7 @@
                     </div>
                 </div>
                 <div class="podcast-episodes">
+                    <!-- PODCAST_EPISODES_START -->
                     <a class="episode-card" href="https://youtu.be/KKXmJ3B7pn0" target="_blank" rel="noopener">
                         <div class="episode-number">Latest Episode</div>
                         <h4>The Man Who Makes Every MotoGP Decision: Race Control</h4>
@@ -871,6 +884,7 @@
                         <h4>Inside the Life of a Real MotoGP Journalist: Mat Oxley</h4>
                         <p>I sit down with legendary MotoGP journalist and former Isle of Man TT winner Mat Oxley for a 40-year view of the sport, with stories from Kenny Roberts and Barry Sheene through Rossi and Márquez.</p>
                     </a>
+                    <!-- PODCAST_EPISODES_END -->
                 </div>
             </div>
         </div>
@@ -946,7 +960,7 @@
         <div class="section-divider" style="margin-left:auto;margin-right:auto;"></div>
         <p>Get new reviews, podcast drops, and rider-first insights straight to your inbox. Signup is handled on Beehiiv.</p>
         <a href="https://kiwimoto72-newsletter.beehiiv.com/" class="btn btn-filled" target="_blank" rel="noopener">Subscribe on Beehiiv</a>
-        <div class="newsletter-note">You’ll be redirected to Beehiiv’s secure signup form.</div>
+        <div class="newsletter-note">By subscribing, you agree to receive email updates from KiwiMoto72 via Beehiiv. You can unsubscribe anytime.</div>
     </section>
 
     <!-- CONTACT -->
