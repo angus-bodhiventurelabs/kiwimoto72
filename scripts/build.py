@@ -121,6 +121,15 @@ def fetch_latest_podcast_episodes(limit: int = 3) -> list[dict[str, str]]:
         for item in rss_items[:limit]:
             title = (item.findtext("title") or "Untitled Episode").strip()
             link = (item.findtext("link") or "").strip()
+            if not link:
+                enclosure = item.find("enclosure")
+                if enclosure is not None:
+                    enc_url = (enclosure.get("url") or "").strip()
+                    if enc_url.endswith(".mp3"):
+                        link = enc_url[:-4]
+                    elif enc_url:
+                        link = enc_url
+
             description = (
                 item.findtext("description")
                 or item.findtext("{http://purl.org/rss/1.0/modules/content/}encoded")
