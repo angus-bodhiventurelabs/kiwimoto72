@@ -81,3 +81,42 @@ In Squarespace domain DNS settings, point the domain to Netlify:
 4. Wait for DNS propagation and enable HTTPS in Netlify.
 
 Always use the exact DNS values shown by Netlify for your site, since they can vary.
+
+## Automatic podcast updates
+
+The homepage podcast cards can auto-refresh at build time from your podcast RSS feed.
+
+- The build script first checks `PODCAST_RSS_URL`.
+- If not set, it tries to auto-discover an RSS URL from `PODCAST_SITE_URL`.
+- If `PODCAST_SITE_URL` is not set, it defaults to `https://kiwimoto72.buzzsprout.com`.
+
+### Netlify environment variables (recommended)
+
+In Netlify Site settings -> Environment variables:
+
+- `PODCAST_RSS_URL` = your direct RSS URL (most reliable)
+- optional: `PODCAST_SITE_URL` = your podcast landing page URL
+
+If `PODCAST_RSS_URL` is set, it takes priority over auto-discovery.
+
+## Automatic YouTube video updates
+
+The homepage video cards auto-refresh at build time from your channel's uploads.
+
+Requires a free YouTube Data API v3 key (~2 quota units per build; free tier is 10,000/day).
+
+### Getting a YouTube API key
+
+1. Go to [console.cloud.google.com](https://console.cloud.google.com)
+2. Create a new project (or select an existing one)
+3. **APIs & Services** → **Enable APIs** → search for **YouTube Data API v3** → Enable
+4. **APIs & Services** → **Credentials** → **Create credentials** → **API key**
+5. Copy the key
+
+### Netlify environment variables
+
+In Netlify Site settings → Environment variables:
+
+- `YOUTUBE_API_KEY` = your API key (required)
+
+Once set, each build fetches the 3 most recent videos from your channel and replaces the video cards automatically.
