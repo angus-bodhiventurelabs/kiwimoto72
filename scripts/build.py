@@ -388,6 +388,13 @@ def main() -> None:
     print(f"Built site to {DIST_DIR}")
     print(f"Posts generated: {len(posts)}")
 
+    # Renew WebSub subscriptions so the webhook stays active after each deploy
+    try:
+        from subscribe_webhooks import subscribe_all
+        subscribe_all()
+    except Exception as exc:
+        print(f"WebSub subscription step failed (non-fatal): {exc}")
+
 
 if __name__ == "__main__":
     main()
