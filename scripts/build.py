@@ -25,8 +25,10 @@ DEFAULT_PODCAST_SITE_URL = "https://kiwimoto72.buzzsprout.com"
 
 YOUTUBE_VIDEOS_START = "<!-- YOUTUBE_VIDEOS_START -->"
 YOUTUBE_VIDEOS_END = "<!-- YOUTUBE_VIDEOS_END -->"
-YOUTUBE_CHANNEL_HANDLE = "kiwimoto72"
+YOUTUBE_CHANNEL_HANDLE = os.getenv("YOUTUBE_CHANNEL_HANDLE", "kiwimoto72").lstrip("@")
+YOUTUBE_CHANNEL_ID = os.getenv("YOUTUBE_CHANNEL_ID", "").strip()
 YOUTUBE_API_BASE = "https://www.googleapis.com/youtube/v3"
+YOUTUBE_FEED_BASE = "https://www.youtube.com/feeds/videos.xml"
 
 
 def _download_bytes(url: str, timeout: int = 12) -> bytes:
@@ -226,38 +228,34 @@ def inject_podcast_episodes_into_index() -> str | None:
 
 
 def fetch_latest_youtube_videos(limit: int = 3) -> list[dict[str, str]]:
-    api_key = os.getenv("YOUTUBE_API_KEY", "").strip()
-    if not api_key:
-        print("YouTube sync skipped: YOUTUBE_API_KEY not set")
+    channel_id = resolve_youtube_channel_id()
+    if not channel_id:
+        print("YouTube sync skipped: unable to resolve channel ID")
         return []
 
+    feed_url = f"{YOUTUBE_FEED_BASE}?channel_id={urllib.parse.quote(channel_id)}"
     try:
-        channel_url = (
-            f"{YOUTUBE_API_BASE}/channels"
-            f"?part=contentDetails&forHandle={YOUTUBE_CHANNEL_HANDLE}&key={api_key}"
-        )
-        channel_data = json.loads(_download_bytes(channel_url, timeout=12))
-        uploads_id = channel_data["items"][0]["contentDetails"]["relatedPlaylists"]["uploads"]
+        feed_bytes = _download_bytes(feed_url, timeout=12)
+        root = ET.fromstring(feed_bytes)
     except Exception as exc:
-        print(f"YouTube sync skipped: unable to fetch channel data ({exc})")
-        return []
-
-    try:
-        playlist_url = (
-            f"{YOUTUBE_API_BASE}/playlistItems"
-            f"?part=snippet&playlistId={uploads_id}&maxResults={limit}&key={api_key}"
-        )
-        playlist_data = json.loads(_download_bytes(playlist_url, timeout=12))
-    except Exception as exc:
-        print(f"YouTube sync skipped: unable to fetch playlist items ({exc})")
+        print(f"YouTube sync skipped: unable to fetch/parse channel feed ({exc})")
         return []
 
     videos: list[dict[str, str]] = []
-    for item in playlist_data.get("items", []):
-        snippet = item.get("snippet", {})
-        video_id = snippet.get("resourceId", {}).get("videoId", "")
-        title = (snippet.get("title") or "Untitled Video").strip()
-        description = _truncate(_strip_html_tags(snippet.get("description") or ""), 220)
+    atom_ns = "{http://www.w3.org/2005/Atom}"
+    media_ns = "{http://search.yahoo.com/mrss/}"
+    yt_ns = "{http://www.youtube.com/xml/schemas/2015}"
+
+    entries = root.findall(f"{atom_ns}entry")
+    for entry in entries[:limit]:
+        video_id = (entry.findtext(f"{yt_ns}videoId") or "").strip()
+        title = (entry.findtext(f"{atom_ns}title") or "Untitled Video").strip()
+        description = (
+            entry.findtext(f"{media_ns}group/{media_ns}description")
+            or entry.findtext(f"{atom_ns}summary")
+            or ""
+        )
+        description = _truncate(_strip_html_tags(description), 220)
         if not video_id:
             continue
         videos.append({"title": title, "video_id": video_id, "description": description})
@@ -267,6 +265,62 @@ def fetch_latest_youtube_videos(limit: int = 3) -> list[dict[str, str]]:
     else:
         print("YouTube sync skipped: no videos found")
     return videos
+
+
+def _parse_channel_id_from_youtube_html(page_html: str) -> str:
+    patterns = [
+        r'"channelId"\s*:\s*"(UC[\w-]{20,})"',
+        r'channel_id=(UC[\w-]{20,})',
+        r'"externalId"\s*:\s*"(UC[\w-]{20,})"',
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, page_html)
+        if match:
+            return match.group(1)
+    return ""
+
+
+def _resolve_channel_id_via_api(api_key: str) -> str:
+    handles = [YOUTUBE_CHANNEL_HANDLE]
+    if not YOUTUBE_CHANNEL_HANDLE.startswith("@"):
+        handles.append(f"@{YOUTUBE_CHANNEL_HANDLE}")
+
+    for handle in handles:
+        try:
+            channel_url = (
+                f"{YOUTUBE_API_BASE}/channels"
+                f"?part=id&forHandle={urllib.parse.quote(handle)}&key={api_key}"
+            )
+            channel_data = json.loads(_download_bytes(channel_url, timeout=12))
+            items = channel_data.get("items") or []
+            if items and items[0].get("id"):
+                return str(items[0]["id"])
+        except Exception:
+            continue
+
+    return ""
+
+
+def resolve_youtube_channel_id() -> str:
+    if YOUTUBE_CHANNEL_ID:
+        return YOUTUBE_CHANNEL_ID
+
+    api_key = os.getenv("YOUTUBE_API_KEY", "").strip()
+    if api_key:
+        api_channel_id = _resolve_channel_id_via_api(api_key)
+        if api_channel_id:
+            return api_channel_id
+
+    try:
+        channel_page_url = f"https://www.youtube.com/@{urllib.parse.quote(YOUTUBE_CHANNEL_HANDLE)}"
+        channel_page = _download_bytes(channel_page_url, timeout=12).decode("utf-8", errors="ignore")
+        scraped_channel_id = _parse_channel_id_from_youtube_html(channel_page)
+        if scraped_channel_id:
+            return scraped_channel_id
+    except Exception:
+        pass
+
+    return ""
 
 
 def render_video_cards(videos: list[dict[str, str]]) -> str:
@@ -387,13 +441,6 @@ def main() -> None:
     build_blog_index(posts)
     print(f"Built site to {DIST_DIR}")
     print(f"Posts generated: {len(posts)}")
-
-    # Renew WebSub subscriptions so the webhook stays active after each deploy
-    try:
-        from subscribe_webhooks import subscribe_all
-        subscribe_all()
-    except Exception as exc:
-        print(f"WebSub subscription step failed (non-fatal): {exc}")
 
 
 if __name__ == "__main__":

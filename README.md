@@ -119,4 +119,38 @@ In Netlify Site settings → Environment variables:
 
 - `YOUTUBE_API_KEY` = your API key (required)
 
+Optional (recommended for explicit channel targeting):
+
+- `YOUTUBE_CHANNEL_HANDLE` = channel handle without `@` (default: `kiwimoto72`)
+- `YOUTUBE_CHANNEL_ID` = full channel id (starts with `UC...`)
+
 Once set, each build fetches the 3 most recent videos from your channel and replaces the video cards automatically.
+
+## YouTube upload-triggered refresh (WebSub)
+
+This repo also renews WebSub subscriptions at the end of each build so new uploads can trigger a Netlify rebuild automatically.
+
+### Required for upload-triggered rebuilds
+
+In Netlify Site settings → Environment variables:
+
+- `NETLIFY_BUILD_HOOK` = full Netlify build hook URL
+
+Callback URL for subscription verification:
+
+- Preferred: set `WEBHOOK_URL` to `https://<your-domain>/.netlify/functions/webhook`
+- Fallback: if `WEBHOOK_URL` is not set, the build script derives it from `URL` or `DEPLOY_PRIME_URL`
+
+### How to verify it is working
+
+1. Trigger a Netlify deploy.
+2. In deploy logs, confirm lines similar to:
+   - `Subscribing to YouTube feed (...)`
+   - `Subscribed OK: https://www.youtube.com/feeds/videos.xml?channel_id=...`
+3. Upload a new YouTube video and confirm Netlify starts a new build shortly after.
+
+### Troubleshooting
+
+- If video cards do not update on normal deploys: verify `YOUTUBE_API_KEY` and channel env vars.
+- If uploads do not trigger rebuilds: verify `NETLIFY_BUILD_HOOK` and webhook callback URL.
+- If webhook calls fail: check Netlify function logs for `/.netlify/functions/webhook`.
