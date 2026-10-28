@@ -11,6 +11,8 @@ import html
 import os
 import re
 import sys
+import time
+import urllib.error
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
@@ -35,8 +37,20 @@ def _download_bytes(url: str, timeout: int = 12) -> bytes:
             )
         },
     )
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        return resp.read()
+    attempts = 4
+    for attempt in range(1, attempts + 1):
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                return resp.read()
+        except (urllib.error.URLError, TimeoutError) as exc:
+            code = getattr(exc, "code", None)
+            retryable = code is None or code >= 500 or code == 429
+            if not retryable or attempt == attempts:
+                raise
+            delay = 5 * attempt
+            print(f"Attempt {attempt} failed ({exc}); retrying in {delay}s", file=sys.stderr)
+            time.sleep(delay)
+    raise RuntimeError("unreachable")
 
 
 def _strip_html_tags(value: str) -> str:
@@ -137,7 +151,11 @@ def main() -> None:
         print("ERROR: YOUTUBE_CHANNEL_ID environment variable is required.", file=sys.stderr)
         sys.exit(1)
 
-    videos = fetch_videos(channel_id)
+    try:
+        videos = fetch_videos(channel_id)
+    except (urllib.error.URLError, TimeoutError) as exc:
+        print(f"WARNING: could not fetch YouTube feed ({exc}) — index.html not changed.", file=sys.stderr)
+        sys.exit(0)
     if not videos:
         print("No videos found in feed — index.html not changed.")
         sys.exit(0)
